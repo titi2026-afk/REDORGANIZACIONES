@@ -91,7 +91,7 @@ canvas:active{cursor:grabbing}
 <select id="subSelect"><option value="">Sin sub-org</option></select>
 <input type="text" id="subNew" placeholder="Nueva sub-organizaci&oacute;n" style="display:none;margin-top:6px"></div>
 <div class="field"><label>Nombre</label><input type="text" id="nameInput" placeholder="Nombre completo"></div>
-<div class="field"><label>Enlace / URL (opcional)</label><input type="text" id="linkInput" placeholder="https://twitter.com/usuario"></div>
+<div class="field"><label>Enlace / URL (opcional)</label><input type="text" id="linkInput" placeholder="https://x.com/usuario"></div>
 <div class="field"><label>Comentario (opcional)</label><textarea id="commentInput" placeholder="Notas sobre esta persona..."></textarea></div>
 <button class="btn btn-primary" id="addBtn">Agregar persona</button>
 </div>
@@ -128,17 +128,18 @@ function getC(o){if(!oc[o])oc[o]=palette[oi++%palette.length];return oc[o]}
 var data=[];var redLinks=[];
 var defaultData=[
 {name:'Melania',org:'Vente Venezuela',sub:'Amplia Frecuencia',comment:'',link:''},
+{name:'Critiquero',org:'Vente Venezuela',sub:'Amplia Frecuencia',comment:'',link:'https://x.com/Critiquero'},
 {name:'Chaco y Gastor Levar',org:'Vente Venezuela',sub:'Guarimba Digital',comment:'',link:''},
 {name:'Jose Graterol',org:'Vente Venezuela',sub:'Equipo de Maria Corina',comment:'',link:''},
 {name:'Luis Velazquez',org:'MC21',sub:'Luis Garcia Morales',comment:'',link:''},
 {name:'Eduardo Carvajal',org:'MC21',sub:'Luis Garcia Morales',comment:'',link:''},
-{name:'Angel Garcia Banchs',org:'Eje Republicano',sub:null,comment:'Contacto clave en la region',link:'https://twitter.com/example'},
+{name:'Angel Garcia Banchs',org:'Eje Republicano',sub:null,comment:'Contacto clave en la region',link:''},
 {name:'Enio Daza',org:'Eje Republicano',sub:'Derecha Ciudadana',comment:'',link:''},
 {name:'General (Gremlins)',org:'MC21',sub:'Acquaviva',comment:'Tiene conexiones con multiples organizaciones',link:''}];
 var defaultRed=[{from:'General (Gremlins)',to:'MC21',label:'interlace'}];
 
-try{var sv=localStorage.getItem('orgnet5');if(sv){var dd=JSON.parse(sv);data=dd.data||[];redLinks=dd.red||[]}else{data=defaultData;redLinks=defaultRed}}catch(e){data=defaultData;redLinks=defaultRed}
-function save(){try{localStorage.setItem('orgnet5',JSON.stringify({data:data,red:redLinks}))}catch(e){}}
+try{var sv=localStorage.getItem('orgnet6');if(sv){var dd=JSON.parse(sv);data=dd.data||[];redLinks=dd.red||[]}else{data=defaultData;redLinks=defaultRed}}catch(e){data=defaultData;redLinks=defaultRed}
+function save(){try{localStorage.setItem('orgnet6',JSON.stringify({data:data,red:redLinks}))}catch(e){}}
 
 var nodes=[],edges=[],nm={},nid=0,sm={};
 function aN(name,type,org,comment,link){var k=type+':'+name;if(nm[k]!=null){if(comment)nodes[nm[k]].comment=comment;if(link)nodes[nm[k]].link=link;return nm[k]}var id=nid++;var c=getC(org);
@@ -343,10 +344,8 @@ else if(n.type==='sub'){dTri(n.x,n.y,n.r);ctx.fillStyle=dark?dk(n.color.fill):n.
 else{ctx.beginPath();ctx.arc(n.x,n.y,n.r,0,Math.PI*2);ctx.fillStyle=dark?dk(n.color.fill):n.color.light;ctx.fill();ctx.strokeStyle=n.color.fill;ctx.lineWidth=1;ctx.stroke();
 var hasCmt=n.comment&&n.comment.trim();
 var hasLink=n.link&&n.link.trim();
-// Yellow dot for comment (top-right)
 if(hasCmt){ctx.beginPath();ctx.arc(n.x+n.r*.55,n.y-n.r*.55,3.5,0,Math.PI*2);
 ctx.fillStyle='#E6A817';ctx.fill();ctx.strokeStyle=dark?'rgba(0,0,0,.3)':'rgba(255,255,255,.8)';ctx.lineWidth=1;ctx.stroke()}
-// Blue dot for link (bottom-right)
 if(hasLink){ctx.beginPath();ctx.arc(n.x+n.r*.55,n.y+n.r*.55,3.5,0,Math.PI*2);
 ctx.fillStyle='#2980B9';ctx.fill();ctx.strokeStyle=dark?'rgba(0,0,0,.3)':'rgba(255,255,255,.8)';ctx.lineWidth=1;ctx.stroke()}}
 if(sL.checked){ctx.fillStyle=dark?'rgba(255,255,255,.85)':'rgba(0,0,0,.72)';
