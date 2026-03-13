@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Red de Organizaciones</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#f5f4f0;--bg2:#fff;--text:#1a1a1a;--text2:#6b6b6b;--border:rgba(0,0,0,.1);--purple:#534AB7;--coral:#D85A30}
+@media(prefers-color-scheme:dark){:root{--bg:#111;--bg2:#1c1c1c;--text:#e8e8e8;--text2:#888;--border:rgba(255,255,255,.1)}}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.wrap{max-width:900px;margin:0 auto;padding:16px}
+.header{text-align:center;padding:20px 0 12px}
+.header h1{font-size:22px;font-weight:600;letter-spacing:-.5px}
+.header p{font-size:13px;color:var(--text2);margin-top:4px}
+
+/* Diagram */
+.canvas-card{background:var(--bg2);border-radius:16px;border:1px solid var(--border);overflow:hidden}
+canvas{display:block;width:100%;height:520px;cursor:grab}
+canvas:active{cursor:grabbing}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;padding:10px 16px;border-top:1px solid var(--border);font-size:13px;color:var(--text2)}
+.toolbar select{font-size:13px;padding:3px 8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-family:inherit}
+.toolbar label{display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;padding:6px 16px 12px;font-size:12px;color:var(--text2)}
+.legend span{display:flex;align-items:center;gap:4px}
+
+/* Bottom section: form + list */
+.bottom{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+@media(max-width:640px){.bottom{grid-template-columns:1fr}}
+.panel{background:var(--bg2);border-radius:16px;border:1px solid var(--border);padding:20px}
+.panel h2{font-size:14px;font-weight:600;margin:0 0 14px;display:flex;align-items:center;gap:8px}
+.panel h2 .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.field input,.field select{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;background:var(--bg);color:var(--text);transition:border-color .2s}
+.field input:focus,.field select:focus{outline:none;border-color:var(--purple)}
+.field select{cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b6b6b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.btn{width:100%;padding:11px;border:none;border-radius:10px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-primary{background:var(--purple);color:#fff}
+.btn-primary:hover{background:#4339a0;transform:translateY(-1px)}
+.btn-primary:active{transform:translateY(0)}
+
+.count{font-size:13px;color:var(--text2);margin-bottom:8px}
+.entry-list{max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:4px}
+.entry{font-size:12px;padding:6px 10px;border-radius:8px;background:var(--bg);display:flex;justify-content:space-between;align-items:center}
+.entry .name{font-weight:500}
+.entry .org{color:var(--text2);font-size:11px}
+.entry .remove{cursor:pointer;opacity:.4;font-size:16px;padding:0 4px;line-height:1}
+.entry .remove:hover{opacity:1;color:var(--coral)}
+.btn-danger{background:transparent;color:var(--coral);border:1px solid var(--border);margin-top:10px;font-weight:500;font-size:13px}
+.btn-danger:hover{background:rgba(216,90,48,.08)}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--text);color:var(--bg);padding:10px 20px;border-radius:10px;font-size:13px;font-weight:500;transition:transform .3s ease;z-index:99;pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="header">
+<h1>Red de Organizaciones</h1>
+<p>Arrastra los nodos &bull; Filtra por organizaci&oacute;n &bull; Agrega personas abajo</p>
+</div>
+
+<!-- DIAGRAM ON TOP -->
+<div class="canvas-card">
+<canvas id="net"></canvas>
+<div class="toolbar">
+<label>Filtrar:</label>
+<select id="orgFilter"><option value="">Todos</option></select>
+<label><input type="checkbox" id="showLabels" checked> Nombres</label>
+</div>
+<div class="legend" id="leg"></div>
+</div>
+
+<!-- FORM + LIST BELOW -->
+<div class="bottom">
+<div class="panel">
+<h2><span class="dot" style="background:var(--purple)"></span>Agregar persona</h2>
+<div class="field">
+<label>Organizaci&oacute;n</label>
+<select id="orgSelect"><option value="">Seleccionar...</option></select>
+<input type="text" id="orgNew" placeholder="Nombre de la nueva organizaci&oacute;n" style="display:none;margin-top:6px">
+</div>
+<div class="field">
+<label>Sub-organizaci&oacute;n (opcional)</label>
+<select id="subSelect"><option value="">Sin sub-organizaci&oacute;n</option></select>
+<input type="text" id="subNew" placeholder="Nombre de la nueva sub-organizaci&oacute;n" style="display:none;margin-top:6px">
+</div>
+<div class="field">
+<label>Nombre</label>
+<input type="text" id="nameInput" placeholder="Nombre completo">
+</div>
+<button class="btn btn-primary" id="addBtn">Agregar</button>
+</div>
+<div class="panel">
+<h2><span class="dot" style="background:var(--coral)"></span>Personas registradas</h2>
+<div class="count" id="countLabel">0 personas</div>
+<div class="entry-list" id="entryList"></div>
+<button class="btn btn-danger" id="clearBtn">Borrar todos</button>
+</div>
+</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+var dark=matchMedia('(prefers-color-scheme:dark)').matches;
+var palette=[
+{fill:'#534AB7',light:'#EEEDFE'},{fill:'#0F6E56',light:'#E1F5EE'},
+{fill:'#D85A30',light:'#FAECE7'},{fill:'#185FA5',light:'#E6F1FB'},
+{fill:'#993556',light:'#FBEAF0'},{fill:'#639922',light:'#EAF3DE'},
+{fill:'#BA7517',light:'#FAEEDA'},{fill:'#A32D2D',light:'#FCEBEB'}];
+var oc={},oi=0;
+function getC(o){if(!oc[o])oc[o]=palette[oi++%palette.length];return oc[o]}
+
+var data=[
+{name:'Melania',org:'Vente Venezuela',sub:'Amplia Frecuencia'},
+{name:'Chaco y Gastor Levar',org:'Vente Venezuela',sub:'Guarimba Digital'},
+{name:'Jose Graterol',org:'Vente Venezuela',sub:'Equipo de Maria Corina'},
+{name:'Luis Velazquez',org:'MC21',sub:'Luis Garcia Morales'},
+{name:'Eduardo Carvajal',org:'MC21',sub:'Luis Garcia Morales'},
+{name:'Angel Garcia Banchs',org:'Eje Republicano',sub:null},
+{name:'Enio Daza',org:'Eje Republicano',sub:'Derecha Ciudadana'},
+{name:'General (Gremlins)',org:'MC21',sub:'Acquaviva'}];
+try{var sv=localStorage.getItem('orgnet2');if(sv){var dd=JSON.parse(sv);if(dd&&dd.length)data=dd}}catch(e){}
+function save(){try{localStorage.setItem('orgnet2',JSON.stringify(data))}catch(e){}}
+
+var nodes=[],edges=[],nm={},nid=0,sm={};
+function aN(name,type,org){var k=type+':'+name;if(nm[k]!=null)return nm[k];var id=nid++;var c=getC(org);
+var r=type==='org'?30:type==='sub'?20:10;nm[k]=id;
+nodes.push({id:id,name:name,type:type,org:org,r:r,color:c,x:W/2-140+Math.random()*280,y:H/2-140+Math.random()*280,vx:0,vy:0});return id}
+function aE(a,b){if(a!=null&&b!=null)edges.push({a:a,b:b})}
+
+function rebuild(){
+nodes=[];edges=[];nm={};nid=0;oc={};oi=0;sm={};
+var os=new Set(),ss=new Set();
+data.forEach(function(p){os.add(p.org);if(p.sub){ss.add(p.sub);sm[p.sub]=p.org}});
+os.forEach(function(o){getC(o);aN(o,'org',o)});
+ss.forEach(function(s){aN(s,'sub',sm[s]);aE(nm['org:'+sm[s]],nm['sub:'+s])});
+data.forEach(function(p){var pid=aN(p.name,'person',p.org);
+if(p.sub&&nm['sub:'+p.sub]!=null)aE(nm['sub:'+p.sub],pid);else aE(nm['org:'+p.org],pid)});
+updUI();save()}
+
+function updUI(){
+var os=new Set(data.map(function(p){return p.org}));
+var f=document.getElementById('orgFilter'),fv=f.value;
+f.innerHTML='<option value="">Todos</option>';
+os.forEach(function(o){f.innerHTML+='<option value="'+o+'"'+(o===fv?' selected':'')+'>'+o+'</option>'});
+var o2=document.getElementById('orgSelect'),ov=o2.value;
+o2.innerHTML='<option value="">Seleccionar...</option>';
+os.forEach(function(o){o2.innerHTML+='<option value="'+o+'"'+(o===ov?' selected':'')+'>'+o+'</option>'});
+o2.innerHTML+='<option value="__new">+ Nueva organizaci\u00f3n</option>';
+updSub();
+var leg=document.getElementById('leg');leg.innerHTML='';
+os.forEach(function(o){var c=getC(o);leg.innerHTML+='<span><span style="width:10px;height:10px;border-radius:3px;background:'+c.fill+';display:inline-block"></span>'+o+'</span>'});
+var gc=dark?'#555':'#bbb';
+leg.innerHTML+='<span style="margin-left:8px"><svg width="12" height="12" viewBox="0 0 14 14"><rect x="1" y="1" width="12" height="12" rx="3" fill="'+gc+'"/></svg> Org</span>';
+leg.innerHTML+='<span><svg width="12" height="12" viewBox="0 0 14 14"><polygon points="7,1 13,13 1,13" fill="'+gc+'"/></svg> Sub</span>';
+leg.innerHTML+='<span><svg width="12" height="12" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5" fill="'+gc+'"/></svg> Persona</span>';
+var list=document.getElementById('entryList');list.innerHTML='';
+data.forEach(function(p,i){
+list.innerHTML+='<div class="entry"><div><span class="name">'+p.name+'</span><br><span class="org">'+p.org+(p.sub?' &rarr; '+p.sub:'')+'</span></div><span class="remove" data-i="'+i+'">&times;</span></div>'});
+document.getElementById('countLabel').textContent=data.length+' persona'+(data.length!==1?'s':'')}
+
+function updSub(){
+var ov=document.getElementById('orgSelect').value;
+var s=document.getElementById('subSelect');
+s.innerHTML='<option value="">Sin sub-organizaci\u00f3n</option>';
+var subs=new Set();data.forEach(function(p){if(p.sub&&p.org===ov)subs.add(p.sub)});
+subs.forEach(function(x){s.innerHTML+='<option value="'+x+'">'+x+'</option>'});
+s.innerHTML+='<option value="__new">+ Nueva sub-organizaci\u00f3n</option>'}
+
+document.getElementById('orgSelect').addEventListener('change',function(){
+var n=document.getElementById('orgNew');if(this.value==='__new'){n.style.display='block';n.focus()}else{n.style.display='none';n.value=''}updSub()});
+document.getElementById('subSelect').addEventListener('change',function(){
+var n=document.getElementById('subNew');if(this.value==='__new'){n.style.display='block';n.focus()}else{n.style.display='none';n.value=''}});
+
+function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2000)}
+
+document.getElementById('addBtn').addEventListener('click',function(){
+var org=document.getElementById('orgSelect').value;
+if(org==='__new')org=document.getElementById('orgNew').value.trim();
+var sub=document.getElementById('subSelect').value;
+if(sub==='__new')sub=document.getElementById('subNew').value.trim();
+if(!sub)sub=null;
+var name=document.getElementById('nameInput').value.trim();
+if(!org){toast('Selecciona una organizaci\u00f3n');return}
+if(!name){toast('Escribe un nombre');return}
+data.push({name:name,org:org,sub:sub});rebuild();
+document.getElementById('nameInput').value='';
+document.getElementById('subNew').style.display='none';document.getElementById('subNew').value='';
+toast('\u2713 '+name+' agregado')});
+
+document.getElementById('nameInput').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('addBtn').click()});
+document.getElementById('entryList').addEventListener('click',function(e){
+var rm=e.target.closest('.remove');if(!rm)return;var i=parseInt(rm.getAttribute('data-i'));
+var n=data[i].name;data.splice(i,1);rebuild();toast(n+' eliminado')});
+document.getElementById('clearBtn').addEventListener('click',function(){
+if(!confirm('\u00bfBorrar todas las personas?'))return;data=[];rebuild();toast('Todos eliminados')});
+
+// CANVAS
+var cv=document.getElementById('net'),ctx=cv.getContext('2d'),W=700,H=520;
+function resize(){W=cv.clientWidth;H=cv.clientHeight||520;cv.width=W*2;cv.height=H*2;ctx.setTransform(2,0,0,2,0,0)}
+resize();window.addEventListener('resize',resize);
+var fOrg='';document.getElementById('orgFilter').addEventListener('change',function(){fOrg=this.value});
+var sL=document.getElementById('showLabels');
+var drag=null;
+cv.addEventListener('pointerdown',function(e){var r=cv.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
+for(var i=nodes.length-1;i>=0;i--){var n=nodes[i];if(Math.hypot(n.x-mx,n.y-my)<n.r+8){drag=i;cv.setPointerCapture(e.pointerId);return}}});
+cv.addEventListener('pointermove',function(e){if(drag===null)return;var r=cv.getBoundingClientRect();nodes[drag].x=e.clientX-r.left;nodes[drag].y=e.clientY-r.top;nodes[drag].vx=0;nodes[drag].vy=0});
+cv.addEventListener('pointerup',function(){drag=null});
+
+function dTri(cx,cy,r){var h=r*1.8,w=r*2;ctx.beginPath();ctx.moveTo(cx,cy-h*.55);ctx.lineTo(cx+w/2,cy+h*.45);ctx.lineTo(cx-w/2,cy+h*.45);ctx.closePath()}
+function dRR(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath()}
+function dk(h){var r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);return'rgb('+Math.round(r*.4)+','+Math.round(g*.4)+','+Math.round(b*.4)+')'}
+
+function tick(){for(var i=0;i<nodes.length;i++){if(i===drag)continue;var fx=0,fy=0;
+for(var j=0;j<nodes.length;j++){if(i===j)continue;var dx=nodes[i].x-nodes[j].x,dy=nodes[i].y-nodes[j].y,d=Math.max(Math.hypot(dx,dy),1);
+var rp=nodes[i].type==='org'&&nodes[j].type==='org'?5000:1400;fx+=dx/d*rp/(d*d);fy+=dy/d*rp/(d*d)}
+for(var k=0;k<edges.length;k++){var e=edges[k];var ot=e.a===i?e.b:e.b===i?e.a:-1;if(ot<0)continue;
+var dx2=nodes[ot].x-nodes[i].x,dy2=nodes[ot].y-nodes[i].y,d2=Math.hypot(dx2,dy2);
+var tg=nodes[i].type==='org'||nodes[ot].type==='org'?130:75;
+fx+=(dx2/d2)*(d2-tg)*.015;fy+=(dy2/d2)*(d2-tg)*.015}
+fx+=(W/2-nodes[i].x)*.0015;fy+=(H/2-nodes[i].y)*.0015;
+nodes[i].vx=(nodes[i].vx+fx)*.82;nodes[i].vy=(nodes[i].vy+fy)*.82;
+nodes[i].x+=nodes[i].vx;nodes[i].y+=nodes[i].vy;
+nodes[i].x=Math.max(50,Math.min(W-50,nodes[i].x));nodes[i].y=Math.max(50,Math.min(H-50,nodes[i].y))}}
+
+function draw(){tick();ctx.clearRect(0,0,W,H);var fo=fOrg||null;
+for(var i=0;i<edges.length;i++){var e=edges[i];if(!nodes[e.a]||!nodes[e.b])continue;
+var na=nodes[e.a],nb=nodes[e.b],act=!fo||(na.org===fo||nb.org===fo);
+ctx.globalAlpha=act?.3:.05;ctx.strokeStyle=na.type==='org'?na.color.fill:nb.type==='org'?nb.color.fill:na.color.fill;
+ctx.lineWidth=na.type==='org'||nb.type==='org'?1.5:1;ctx.beginPath();ctx.moveTo(na.x,na.y);ctx.lineTo(nb.x,nb.y);ctx.stroke()}
+ctx.globalAlpha=1;var st=nodes.slice().sort(function(a,b){return({person:0,sub:1,org:2}[a.type])-({person:0,sub:1,org:2}[b.type])});
+for(var i=0;i<st.length;i++){var n=st[i];var act=!fo||n.org===fo;ctx.globalAlpha=act?1:.12;
+if(n.type==='org'){dRR(n.x-n.r,n.y-n.r,n.r*2,n.r*2,10);ctx.fillStyle=n.color.fill;ctx.fill();ctx.strokeStyle=dark?'rgba(255,255,255,.12)':'rgba(0,0,0,.08)';ctx.lineWidth=1.5;ctx.stroke()}
+else if(n.type==='sub'){dTri(n.x,n.y,n.r);ctx.fillStyle=dark?dk(n.color.fill):n.color.light;ctx.fill();ctx.strokeStyle=n.color.fill;ctx.lineWidth=1.2;ctx.stroke()}
+else{ctx.beginPath();ctx.arc(n.x,n.y,n.r,0,Math.PI*2);ctx.fillStyle=dark?dk(n.color.fill):n.color.light;ctx.fill();ctx.strokeStyle=n.color.fill;ctx.lineWidth=1;ctx.stroke()}
+if(sL.checked){ctx.fillStyle=dark?'rgba(255,255,255,.85)':'rgba(0,0,0,.72)';
+var fs=n.type==='org'?14:n.type==='sub'?11:10;
+ctx.font=(n.type==='org'?'600 ':'400 ')+fs+'px "DM Sans",sans-serif';
+ctx.textAlign='center';ctx.textBaseline='top';
+var lb=n.name.length>24?n.name.slice(0,22)+'\u2026':n.name;
+ctx.fillText(lb,n.x,n.y+(n.type==='sub'?n.r*.45+8:n.r+6))}}
+ctx.globalAlpha=1;requestAnimationFrame(draw)}
+rebuild();draw();
+</script>
+</body>
+</html>
